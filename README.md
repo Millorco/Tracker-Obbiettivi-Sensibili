@@ -1,6 +1,6 @@
 # 🛰️ GPS Tracker — Sistema di Monitoraggio Percorsi
 
-Container singolo con web app Flask + server FTP integrati.
+Container con web app Flask + server FTP integrati.
 
 ## Struttura
 ```
