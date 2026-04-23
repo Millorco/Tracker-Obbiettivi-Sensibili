@@ -1,14 +1,19 @@
+version: '3.8'
+
 services:
   gps-tracker:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: gps-obbiettivi
+    container_name: gps-tracker
     restart: unless-stopped
     ports:
       - "5000:5000"   # Web app
       - "21:21"       # FTP
       - "21100-21110:21100-21110"  # FTP passive
+    volumes:
+      - gps_uploads:/ftp-data/uploads
+      - gps_db:/app/db
     environment:
       - APP_PASSWORD=${APP_PASSWORD:-admin123}
       - SECRET_KEY=${SECRET_KEY:-change-this-secret-key}
@@ -20,3 +25,7 @@ services:
       - SMTP_USER=${SMTP_USER:-}
       - SMTP_PASS=${SMTP_PASS:-}
       - REPORT_EMAIL=${REPORT_EMAIL:-}
+
+volumes:
+  gps_uploads:
+  gps_db:
