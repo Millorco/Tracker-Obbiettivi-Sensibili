@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block title %}Report{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div style="display:flex;flex-wrap:wrap;align-items:flex-start;gap:12px;justify-content:space-between">
+    <div style="min-width:0">
+      <div class="page-title">Report Percorso</div>
+      <div class="page-desc" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ pdf_title }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- Action bar -->
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+  <a href="/" class="btn btn-secondary btn-sm">← Indietro</a>
+  <button class="btn btn-danger btn-sm" onclick="deleteAndBack()">🗑 Elimina file</button>
+  <a href="/download_report" class="btn btn-secondary btn-sm">⬇ Scarica PDF</a>
+  <button class="btn btn-success btn-sm" onclick="sendReport()" id="btnSend">📧 Invia email</button>
+</div>
+
+<div class="card">
+  <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:16px">
+    <span class="badge badge-blue">{{ shift_name }}</span>
+    <span class="badge badge-gray">{{ report_date.strftime('%d/%m/%Y') }}</span>
+    <span class="badge badge-gray">{{ total_points }} punti GPS</span>
+    {% if visits %}<span class="badge badge-green">{{ visits|length }} luoghi</span>{% endif %}
+  </div>
+
+  {% if visits %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Orario</th><th>Luogo</th></tr></thead>
+      <tbody>
+        {% for v in visits %}
+        <tr>
+          <td style="width:80px"><span class="mono" style="font-size:16px;font-weight:700;color:var(--primary)">{{ v.time.strftime('%H:%M') }}</span></td>
+          <td style="font-size:14px;font-weight:500">{{ v.location.name }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state" style="padding:36px 20px">
+    <div class="empty-state-icon">🔍</div>
+    <div class="empty-state-title">Nessun luogo visitato</div>
+    <div class="empty-state-desc">Il percorso non ha attraversato nessun luogo configurato</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function sendReport(){
+  const btn=document.getElementById('btnSend');
+  btn.textContent='Invio...'; btn.disabled=true;
+  fetch('/send_report',{method:'POST'})
+    .then(r=>r.json()).then(d=>{
+      showToast(d.message,d.success?'success':'error');
+      btn.innerHTML='📧 Invia email'; btn.disabled=false;
+    }).catch(()=>{ showToast('Errore di rete','error'); btn.innerHTML='📧 Invia email'; btn.disabled=false; });
+}
+function deleteAndBack(){
+  if(!confirm('Eliminare "{{ filename }}" e tornare alla dashboard?')) return;
+  fetch('/delete_file',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filename:'{{ filename }}'})})
+    .then(r=>r.json()).then(d=>{
+      if(d.success){showToast('File eliminato');setTimeout(()=>location.href='/',800);}
+      else showToast(d.message,'error');
+    });
+}
+</script>
+{% endblock %}

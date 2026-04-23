@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+{% block title %}Luoghi{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">Luoghi Speciali</div>
+  <div class="page-desc">Punti di interesse da rilevare durante i percorsi</div>
+</div>
+
+<!-- ADD FORM -->
+<div class="card">
+  <div class="card-title">Aggiungi luogo</div>
+  <form method="POST" action="/locations/add">
+    <div class="form-group">
+      <label>Nome</label>
+      <input type="text" name="name" placeholder="es. Magazzino Nord" required autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label>Coordinate (lat, lon)</label>
+      <input type="text" name="coords" placeholder="46.732413, 12.282441" required autocomplete="off" inputmode="decimal">
+      <div class="form-hint">Incolla direttamente le coordinate da Google Maps</div>
+    </div>
+    <div class="form-group">
+      <label>Note (opzionale)</label>
+      <input type="text" name="notes" placeholder="Descrizione o riferimento">
+    </div>
+    <button type="submit" class="btn btn-primary btn-full">Aggiungi</button>
+  </form>
+</div>
+
+<!-- IMPORT/EXPORT -->
+<div style="display:flex;gap:8px;margin-bottom:16px">
+  <button class="btn btn-secondary" style="flex:1;justify-content:center" onclick="exportLocations()">⬇ Esporta JSON</button>
+  <label class="btn btn-secondary" style="flex:1;justify-content:center;cursor:pointer">
+    ⬆ Importa JSON
+    <input type="file" accept=".json" style="display:none" onchange="importLocations(this)">
+  </label>
+</div>
+
+<!-- LIST -->
+<div class="card">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <div class="card-title" style="margin-bottom:0">Luoghi configurati</div>
+    <span class="badge badge-gray">{{ locations|length }}</span>
+  </div>
+  {% if locations %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>Nome</th>
+        <th class="hide-mobile">Coordinate</th>
+        <th class="hide-mobile">Note</th>
+        <th style="width:90px"></th>
+      </tr></thead>
+      <tbody>
+        {% for loc in locations %}
+        <tr id="row-{{ loc.id }}">
+          <td>
+            <div style="font-weight:600" id="name-{{ loc.id }}">{{ loc.name }}</div>
+            <div class="mono hide-desktop" style="font-size:11px;color:var(--text3);margin-top:2px" id="coords-mob-{{ loc.id }}">{{ "%.5f"|format(loc.lat) }}, {{ "%.5f"|format(loc.lon) }}</div>
+          </td>
+          <td class="hide-mobile mono" style="color:var(--primary);font-size:11px" id="coords-{{ loc.id }}">{{ "%.6f"|format(loc.lat) }}, {{ "%.6f"|format(loc.lon) }}</td>
+          <td class="hide-mobile" style="color:var(--text2)" id="notes-{{ loc.id }}">{{ loc.notes or '—' }}</td>
+          <td>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-secondary btn-sm" onclick="openEdit({{ loc.id }},'{{ loc.name|e }}','{{ '%.6f'|format(loc.lat) }}, {{ '%.6f'|format(loc.lon) }}','{{ (loc.notes or '')|e }}')">✏️</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteLoc({{ loc.id }},'{{ loc.name|e }}')">✕</button>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state" style="padding:36px 20px">
+    <div class="empty-state-icon">📍</div>
+    <div class="empty-state-title">Nessun luogo configurato</div>
+    <div class="empty-state-desc">Aggiungi i luoghi da monitorare usando il form qui sopra</div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-title">Modifica luogo</div>
+    <div class="form-group">
+      <label>Nome</label>
+      <input type="text" id="edit-name" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label>Coordinate (lat, lon)</label>
+      <input type="text" id="edit-coords" autocomplete="off" inputmode="decimal">
+    </div>
+    <div class="form-group">
+      <label>Note</label>
+      <input type="text" id="edit-notes" autocomplete="off">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Annulla</button>
+      <button class="btn btn-primary" onclick="saveEdit()">Salva</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<style>.hide-desktop{display:none}@media(max-width:640px){.hide-desktop{display:block}}</style>
+<script>
+let editingId=null;
+function openEdit(id,name,coords,notes){
+  editingId=id;
+  document.getElementById('edit-name').value=name;
+  document.getElementById('edit-coords').value=coords;
+  document.getElementById('edit-notes').value=notes;
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal(){document.getElementById('modal').classList.remove('open');editingId=null;}
+function saveEdit(){
+  const name=document.getElementById('edit-name').value.trim();
+  const coords=document.getElementById('edit-coords').value.trim();
+  const notes=document.getElementById('edit-notes').value.trim();
+  if(!name||!coords){showToast('Nome e coordinate obbligatori','error');return;}
+  fetch('/locations/edit/'+editingId,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,coords,notes})})
+    .then(r=>r.json()).then(d=>{
+      if(d.success){
+        document.getElementById('name-'+editingId).textContent=name;
+        const c=d.lat.toFixed(6)+', '+d.lon.toFixed(6);
+        const cm=d.lat.toFixed(5)+', '+d.lon.toFixed(5);
+        const ce=document.getElementById('coords-'+editingId);
+        const cem=document.getElementById('coords-mob-'+editingId);
+        if(ce) ce.textContent=c;
+        if(cem) cem.textContent=cm;
+        document.getElementById('notes-'+editingId).textContent=notes||'—';
+        closeModal(); showToast('Luogo aggiornato');
+      } else showToast(d.message,'error');
+    });
+}
+function deleteLoc(id,name){
+  if(!confirm('Eliminare "'+name+'"?')) return;
+  fetch('/locations/delete/'+id,{method:'POST'}).then(r=>r.json()).then(d=>{
+    if(d.success){document.getElementById('row-'+id).remove();showToast('Luogo eliminato');}
+  });
+}
+function exportLocations(){
+  fetch('/locations/export').then(r=>r.json()).then(data=>{
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+    a.download='luoghi_gps.json';a.click();
+  });
+}
+function importLocations(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      fetch('/locations/import',{method:'POST',headers:{'Content-Type':'application/json'},body:e.target.result})
+        .then(r=>r.json()).then(d=>{
+          if(d.success){showToast(d.message);setTimeout(()=>location.reload(),1000);}
+          else showToast(d.message,'error');
+        });
+    }catch(e){showToast('File JSON non valido','error');}
+  };
+  reader.readAsText(file);
+}
+document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+</script>
+{% endblock %}
