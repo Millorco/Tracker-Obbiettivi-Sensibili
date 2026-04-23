@@ -265,7 +265,6 @@ def build_report_text(visits, shift_name, report_date):
     shift_range = SHIFT_RANGES.get(shift_name, shift_name)
     lines = [
         f"Scheda Obbiettivi Sensibili turno {shift_range} del {report_date.strftime('%d.%m.%Y')}",
-        f"Generato: {datetime.now().strftime('%d/%m/%Y %H:%M')}",
         "=" * 50, ""
     ]
     if visits:
@@ -303,9 +302,7 @@ def build_report_pdf(visits, shift_name, report_date):
     story.append(Paragraph(pdf_title(shift_name, report_date),
         ParagraphStyle('title', fontName='Helvetica-Bold', fontSize=16,
                        textColor=PRIMARY, spaceAfter=4, leading=20)))
-    story.append(Paragraph(
-        f"Generato: {datetime.now().strftime('%d/%m/%Y %H:%M')}",
-        ParagraphStyle('sub', fontName='Helvetica', fontSize=10, textColor=MUTED, spaceAfter=2)))
+
     story.append(HRFlowable(width="100%", thickness=1.5, color=PRIMARY, spaceAfter=18))
 
     if visits:
@@ -372,7 +369,7 @@ table{{width:100%;border-collapse:collapse}}
 .empty{{color:#94a3b8;padding:20px 0;font-size:14px}}
 </style></head><body>
 <div class='wrap'>
-<div class='head'><h2>{pdf_title(shift_name, report_date)}</h2><p>Generato: {datetime.now().strftime('%d/%m/%Y %H:%M')}</p></div>
+<div class='head'><h2>{pdf_title(shift_name, report_date)}</h2></div>
 <div class='body'><table>{html_rows if html_rows else "<tr><td colspan='2' class='empty'>Nessun luogo visitato</td></tr>"}</table></div>
 <div class='footer'>Report automatico — GPS Tracker</div>
 </div></body></html>"""
