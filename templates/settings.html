@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block title %}Impostazioni{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">Impostazioni</div>
+  <div class="page-desc">Configurazione email e parametri di rilevamento</div>
+</div>
+
+<!-- RILEVAMENTO -->
+<div class="card">
+  <div class="card-title">Parametri di Rilevamento</div>
+  <div class="grid-2">
+    <div class="form-group">
+      <label>Raggio di prossimità (metri)</label>
+      <input type="number" id="proximity" value="{{ proximity }}" min="1" max="5000" step="1" inputmode="numeric">
+      <div class="form-hint">Distanza entro cui il punto GPS è "nel luogo"</div>
+    </div>
+    <div class="form-group">
+      <label>Cooldown tra visite (minuti)</label>
+      <input type="number" id="cooldown" value="{{ cooldown }}" min="1" max="480" step="1" inputmode="numeric">
+      <div class="form-hint">Tempo minimo tra due rilevamenti dello stesso luogo</div>
+    </div>
+  </div>
+  <button class="btn btn-primary" onclick="saveAll()">Salva tutte le impostazioni</button>
+</div>
+
+<!-- EMAIL -->
+<div class="card">
+  <div class="card-title">Configurazione Email</div>
+  <div class="grid-2">
+    <div class="form-group">
+      <label>SMTP Host</label>
+      <input type="text" id="smtp_host" value="{{ smtp_host }}" placeholder="smtp.gmail.com" autocomplete="off" autocapitalize="none">
+    </div>
+    <div class="form-group">
+      <label>SMTP Porta</label>
+      <input type="number" id="smtp_port" value="{{ smtp_port }}" placeholder="587" inputmode="numeric">
+    </div>
+  </div>
+  <div class="form-group">
+    <label>Utente SMTP (email mittente)</label>
+    <input type="email" id="smtp_user" value="{{ smtp_user }}" placeholder="tua@gmail.com" autocomplete="off" autocapitalize="none">
+  </div>
+  <div class="form-group">
+    <label>Password SMTP</label>
+    <input type="password" id="smtp_pass" value="{{ smtp_pass }}" placeholder="••••••••••••" autocomplete="new-password">
+    <div class="form-hint">Per Gmail usa una App Password da myaccount.google.com</div>
+  </div>
+  <div class="form-group">
+    <label>Email destinatario report</label>
+    <input type="email" id="report_email" value="{{ report_email }}" placeholder="destinatario@email.com" autocapitalize="none">
+  </div>
+  <button class="btn btn-primary" onclick="saveAll()">Salva tutte le impostazioni</button>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function saveAll(){
+  const proximity   = parseFloat(document.getElementById('proximity').value);
+  const cooldown    = parseFloat(document.getElementById('cooldown').value);
+  const smtp_host   = document.getElementById('smtp_host').value.trim();
+  const smtp_port   = document.getElementById('smtp_port').value.trim();
+  const smtp_user   = document.getElementById('smtp_user').value.trim();
+  const smtp_pass   = document.getElementById('smtp_pass').value;
+  const report_email= document.getElementById('report_email').value.trim();
+  if(isNaN(proximity)||proximity<1){showToast('Raggio non valido','error');return;}
+  if(isNaN(cooldown)||cooldown<1){showToast('Cooldown non valido','error');return;}
+  fetch('/settings',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({proximity_meters:proximity,cooldown_minutes:cooldown,
+      smtp_host,smtp_port,smtp_user,smtp_pass,report_email})
+  }).then(r=>r.json()).then(d=>showToast(d.message,d.success?'success':'error'));
+}
+</script>
+{% endblock %}
